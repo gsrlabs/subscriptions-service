@@ -1,75 +1,39 @@
 package model
 
 import (
-    "fmt"
-    "time"
-    
-    "github.com/google/uuid"
+	"time"
+
+	"github.com/google/uuid"
 )
 
+// Subscription — доменная модель подписки
 type Subscription struct {
-    ID          uuid.UUID  `json:"id"`
-    UserID      uuid.UUID  `json:"user_id"`
-    ServiceName string     `json:"service_name"`
-    Price       int        `json:"price"`
-    StartDate   time.Time  `json:"start_date"`
-    EndDate     *time.Time `json:"end_date,omitempty"`
-    CreatedAt   time.Time  `json:"created_at"`
-    UpdatedAt   time.Time  `json:"updated_at"`
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	ServiceName string
+	Price       int
+	StartDate   time.Time
+	EndDate     *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
-// CreateSubscriptionRequest - DTO для создания подписки
+// Data Transfer Object
+// CreateSubscriptionRequest — входящий запрос
 type CreateSubscriptionRequest struct {
-    ServiceName string    `json:"service_name"`
-    Price       int       `json:"price"`
-    UserID      uuid.UUID `json:"user_id"`
-    StartDate   string    `json:"start_date"` // Формат "MM-YYYY"
-    EndDate     *string   `json:"end_date,omitempty"` // Формат "MM-YYYY"
+	ServiceName string    `json:"service_name" validate:"required,min=2"`
+	Price       int       `json:"price" validate:"required,min=0"`
+	UserID      uuid.UUID `json:"user_id" validate:"required"`
+	StartDate   string    `json:"start_date" validate:"required,mmYYYY"`
+	EndDate     *string   `json:"end_date,omitempty" validate:"omitempty,mmYYYY"`
 }
 
-// UpdateSubscriptionRequest - DTO для обновления подписки
-type UpdateSubscriptionRequest struct {
-    ServiceName *string    `json:"service_name,omitempty"`
-    Price       *int       `json:"price,omitempty"`
-    StartDate   *string    `json:"start_date,omitempty"` // Формат "MM-YYYY"
-    EndDate     *string    `json:"end_date,omitempty"`   // Формат "MM-YYYY"
-}
-
-// ParseMonthYear парсит строку в формате "MM-YYYY" в time.Time
-func ParseMonthYear(monthYear string) (time.Time, error) {
-    parsedTime, err := time.Parse("01-2006", monthYear)
-    if err != nil {
-        return time.Time{}, fmt.Errorf("invalid date format, expected MM-YYYY: %w", err)
-    }
-    return parsedTime, nil
-}
-
-// ToTimePtr конвертирует строку в указатель на time.Time
-func ToTimePtr(monthYear *string) (*time.Time, error) {
-    if monthYear == nil {
-        return nil, nil
-    }
-    
-    parsedTime, err := ParseMonthYear(*monthYear)
-    if err != nil {
-        return nil, err
-    }
-    
-    return &parsedTime, nil
-}
-
-// SubscriptionFilter - фильтр для поиска подписок
-type SubscriptionFilter struct {
-    UserID      *uuid.UUID
-    ServiceName *string
-    Limit       int
-    Offset      int
-}
-
-// SummaryFilter - фильтр для агрегации
-type SummaryFilter struct {
-    UserID      *uuid.UUID
-    ServiceName *string
-    StartPeriod string // Формат "MM-YYYY"
-    EndPeriod   string // Формат "MM-YYYY"
+// SubscriptionResponse — ответ API
+type SubscriptionResponse struct {
+	ID          uuid.UUID `json:"id"`
+	ServiceName string    `json:"service_name"`
+	Price       int       `json:"price"`
+	UserID      uuid.UUID `json:"user_id"`
+	StartDate   string    `json:"start_date"`
+	EndDate     *string   `json:"end_date,omitempty"`
 }
