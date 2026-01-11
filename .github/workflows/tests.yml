@@ -1,0 +1,63 @@
+name: Go Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    # Поднимаем PostgreSQL контейнер для тестов
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: subscriptions
+        ports:
+          - 5432:5432
+        # Ждем, пока база будет готова принимать соединения
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25.x'
+
+    - name: Install dependencies
+      run: go mod download
+
+# Проверка, что код хотя бы компилируется
+    - name: Build
+      run: go build -v -o app-binary ./cmd/app/main.go
+
+    # Раскомментируйте ниже, если понадобятся Integration/E2E тесты
+    # - name: Run local server
+    #   env:
+    #     DB_HOST: localhost
+    #     DB_PORT: 5432
+    #     DB_USER: postgres
+    #     DB_PASSWORD: password
+    #     DB_NAME: subscriptions
+    #     MIGRATION_PATH: ./migrations # Здесь путь от корня проекта
+    #   run: |
+    #     ./app-binary & 
+    #     sleep 5 # Даем серверу время на запуск и миграции
+
+    # Запуск всех тестов в проекте
+    - name: Run Tests
+      env:
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_USER: postgres
+        DB_PASSWORD: password
+        DB_NAME: subscriptions
+        MIGRATION_PATH_TEST: ../../migrations 
+      run: go test -v ./...
