@@ -15,15 +15,18 @@ import (
 	"subscription-service/internal/service"
 )
 
+// SubscriptionHandler manages HTTP communication for subscription-related endpoints.
 type SubscriptionHandler struct {
 	service service.SubscriptionService
 }
 
+// NewSubscriptionHandler initializes a new handler with the provided subscription service.
 func NewSubscriptionHandler(s service.SubscriptionService) *SubscriptionHandler {
 	return &SubscriptionHandler{service: s}
 }
 
-
+// Create decodes the request body, validates it, and triggers the creation of a new subscription.
+// It returns 201 Created on success or 400 Bad Request on validation failure.
 func (h *SubscriptionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	log.Printf("INFO: handler create subscription")
 
@@ -52,7 +55,8 @@ func (h *SubscriptionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, model.ToResponse(sub))
 }
 
-
+// Get extracts the subscription ID from the URL and returns the matching record.
+// Returns 404 Not Found if the subscription does not exist.
 func (h *SubscriptionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 
@@ -71,6 +75,7 @@ func (h *SubscriptionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, model.ToResponse(sub))
 }
 
+// Update replaces an existing subscription's data after validating the input and the ID.
 func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
@@ -105,6 +110,8 @@ func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, model.ToResponse(sub))
 }
 
+// Delete removes a subscription based on the ID provided in the URL path.
+// Returns 204 No Content upon successful deletion.
 func (h *SubscriptionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idStr)
@@ -121,6 +128,8 @@ func (h *SubscriptionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// List retrieves a filtered and paginated list of subscriptions based on query parameters.
+// Parameters include user_id, service_name, limit, and offset.
 func (h *SubscriptionHandler) List(w http.ResponseWriter, r *http.Request) {
 	var (
 		userID      *uuid.UUID
@@ -163,6 +172,8 @@ func (h *SubscriptionHandler) List(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// Summary calculates the total cost of subscriptions for a user within a specific time range.
+// Requires 'from' and 'to' query parameters in "MM-YYYY" format.
 func (h *SubscriptionHandler) Summary(w http.ResponseWriter, r *http.Request) {
 	fromStr := r.URL.Query().Get("from")
 	toStr := r.URL.Query().Get("to")

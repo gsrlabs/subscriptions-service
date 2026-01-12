@@ -13,11 +13,13 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+// Database wraps the pgxpool.Pool to provide a unified database access point.
 type Database struct {
 	Pool *pgxpool.Pool
 }
 
-// Connect инициализирует pgxpool и прогоняет миграции
+// Connect establishes a connection pool to PostgreSQL using environment variables
+// and automatically executes pending migrations.
 func Connect(ctx context.Context) (*Database, error) {
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
@@ -57,6 +59,8 @@ func Connect(ctx context.Context) (*Database, error) {
 	return &Database{Pool: pool}, nil
 }
 
+// runMigrations applies database schema changes using the goose provider
+// from the specified migrations directory.
 func runMigrations(dsn string) error {
 	migrationsPath := getEnv("MIGRATION_PATH", "./migrations")
 
@@ -78,6 +82,8 @@ func runMigrations(dsn string) error {
 	return nil
 }
 
+// getEnv retrieves the value of the environment variable named by the key
+// or returns a fallback value if the variable is empty.
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v

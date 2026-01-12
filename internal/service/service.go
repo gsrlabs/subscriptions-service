@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// SubscriptionService defines the business logic operations for managing subscriptions.
 type SubscriptionService interface {
 	Create(ctx context.Context, sub *model.Subscription) error
 	Get(ctx context.Context, id uuid.UUID) (*model.Subscription, error)
@@ -33,7 +34,6 @@ type SubscriptionService interface {
 	) (int, error)
 }
 
-
 var (
 	ErrInvalidPeriod = errors.New("invalid aggregation period")
 )
@@ -42,10 +42,13 @@ type subscriptionService struct {
 	repo repository.SubscriptionRepository
 }
 
+// NewSubscriptionService creates a new instance of the subscription service with the given repository.
 func NewSubscriptionService(repo repository.SubscriptionRepository) SubscriptionService {
 	return &subscriptionService{repo: repo}
 }
 
+// Create validates and saves a new subscription.
+// It returns an error if the price is negative or if the end date is before the start date.
 func (s *subscriptionService) Create(ctx context.Context, sub *model.Subscription) error {
 	log.Printf("INFO: service create subscription for user %s", sub.UserID)
 
@@ -69,6 +72,7 @@ func (s *subscriptionService) Create(ctx context.Context, sub *model.Subscriptio
 	return nil
 }
 
+// Get retrieves a subscription by its ID from the repository.
 func (s *subscriptionService) Get(ctx context.Context, id uuid.UUID) (*model.Subscription, error) {
 	log.Printf("INFO: service get subscription %s", id)
 
@@ -81,6 +85,8 @@ func (s *subscriptionService) Get(ctx context.Context, id uuid.UUID) (*model.Sub
 	return sub, nil
 }
 
+// Update validates and updates an existing subscription.
+// It enforces the same validation rules as the Create method (price and dates).
 func (s *subscriptionService) Update(ctx context.Context, sub *model.Subscription) error {
 	log.Printf("INFO: service update subscription %s", sub.ID)
 
@@ -102,6 +108,7 @@ func (s *subscriptionService) Update(ctx context.Context, sub *model.Subscriptio
 	return nil
 }
 
+// Delete removes a subscription record via the repository.
 func (s *subscriptionService) Delete(ctx context.Context, id uuid.UUID) error {
 	log.Printf("INFO: service delete subscription %s", id)
 
@@ -115,6 +122,8 @@ func (s *subscriptionService) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// List fetches a collection of subscriptions with default values for pagination (limit: 20, offset: 0)
+// if they are not provided or invalid.
 func (s *subscriptionService) List(
 	ctx context.Context,
 	userID *uuid.UUID,
@@ -135,6 +144,8 @@ func (s *subscriptionService) List(
 	return s.repo.List(ctx, userID, serviceName, limit, offset)
 }
 
+// Aggregate calculates the total cost of subscriptions for a specific period.
+// It returns ErrInvalidPeriod if the start time (from) is after the end time (to).
 func (s *subscriptionService) Aggregate(
 	ctx context.Context,
 	userID *uuid.UUID,
@@ -159,5 +170,3 @@ func (s *subscriptionService) Aggregate(
 	log.Printf("INFO: aggregation result = %d", total)
 	return total, nil
 }
-
-

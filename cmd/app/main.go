@@ -17,6 +17,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// main is the entry point of the application. It orchestrates the initialization
+// of the database, repositories, services, and HTTP handlers, and starts the server.
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -66,7 +68,8 @@ func main() {
 	waitForShutdown(ctx, server)
 }
 
-
+// waitForShutdown blocks the main goroutine until a termination signal (SIGINT or SIGTERM) is received,
+// then gracefully shuts down the HTTP server with a 5-second timeout.
 func waitForShutdown(ctx context.Context, server *http.Server) {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -84,6 +87,8 @@ func waitForShutdown(ctx context.Context, server *http.Server) {
 	log.Printf("INFO: application stopped")
 }
 
+// getEnv retrieves the value of the environment variable named by the key
+// or returns a fallback value if the variable is empty.
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
