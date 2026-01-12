@@ -25,7 +25,6 @@ func NewSubscriptionHandler(s service.SubscriptionService) *SubscriptionHandler 
 	return &SubscriptionHandler{service: s}
 }
 
-
 // Create godoc
 // @Summary Create subscription
 // @Description Create a new subscription
@@ -163,7 +162,6 @@ func (h *SubscriptionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
-
 
 // List godoc
 // @Summary List subscriptions

@@ -11,5 +11,5 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /root/
 COPY --from=builder /app/main .
 COPY --from=builder /app/migrations ./migrations
-EXPOSE ${APP_PORT:-8088}
+EXPOSE ${APP_PORT:-8090}
 CMD ["./main"]

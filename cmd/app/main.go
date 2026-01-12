@@ -25,13 +25,13 @@ import (
 // @termsOfService http://swagger.io/terms/
 
 // @contact.name API Support
-// @contact.url http://www.swagger.io/support
-// @contact.email support@swagger.io
+// @contact.url https://github.com/gsrlabs
+// @contact.email gsrnode@mail.com
 
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host localhost:8088
+// @host localhost:8090
 // @BasePath /
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -70,7 +70,7 @@ func main() {
 
 	// 6️⃣ HTTP server
 	server := &http.Server{
-		Addr:    ":" + getEnv("APP_PORT", "8088"),
+		Addr:    ":" + getEnv("APP_PORT", "8090"),
 		Handler: r,
 	}
 
