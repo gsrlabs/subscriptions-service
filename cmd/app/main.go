@@ -6,9 +6,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"subscription-service/internal/db"
 	"syscall"
 	"time"
+
+	"subscription-service/internal/db"
+	"subscription-service/internal/handler"
+	"subscription-service/internal/repository"
+	"subscription-service/internal/service"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -19,14 +23,34 @@ func main() {
 
 	log.Printf("INFO: starting application")
 
+	// 1️⃣ DB
 	database, err := db.Connect(ctx)
 	if err != nil {
 		log.Fatalf("ERROR: failed to connect to database: %v", err)
 	}
 	defer database.Pool.Close()
 
-	r := chi.NewRouter()
+	// 2️⃣ Repository
+	subRepo := repository.NewSubscriptionRepository(database.Pool)
 
+	// 3️⃣ Service
+	subService := service.NewSubscriptionService(subRepo)
+
+	// 4️⃣ Handler
+	subHandler := handler.NewSubscriptionHandler(subService)
+
+	// 5️⃣ Router
+	r := chi.NewRouter()
+	r.Use(handler.LoggingMiddleware)
+
+	r.Post("/subscriptions", subHandler.Create)
+	r.Get("/subscriptions/{id}", subHandler.Get)
+	r.Put("/subscriptions/{id}", subHandler.Update)
+	r.Delete("/subscriptions/{id}", subHandler.Delete)
+	r.Get("/subscriptions", subHandler.List)
+	r.Get("/subscriptions/summary", subHandler.Summary)
+
+	// 6️⃣ HTTP server
 	server := &http.Server{
 		Addr:    ":" + getEnv("APP_PORT", "8080"),
 		Handler: r,
@@ -41,6 +65,7 @@ func main() {
 
 	waitForShutdown(ctx, server)
 }
+
 
 func waitForShutdown(ctx context.Context, server *http.Server) {
 	stop := make(chan os.Signal, 1)
