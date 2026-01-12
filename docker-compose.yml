@@ -24,14 +24,14 @@ services:
     container_name: subscriptions_app
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "${APP_PORT:-8088}:8088"
     environment:
       - DB_HOST=postgres
       - DB_PORT=${DB_PORT:-5432}
       - DB_USER=${DB_USER:-postgres}
       - DB_PASSWORD=${DB_PASSWORD:-password}
       - DB_NAME=${DB_NAME:-subscriptions}
-      - APP_PORT=${APP_PORT:-8080}
+      - APP_PORT=${APP_PORT:-8088}
       - MIGRATION_PATH=/root/migrations
     depends_on:
       postgres:

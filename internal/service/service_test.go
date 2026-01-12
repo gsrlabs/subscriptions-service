@@ -14,12 +14,13 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// --- 1. Создаем Mock Репозитория ---
-// Это "фейковая" база данных. Она не ходит в Postgres,
-// а просто возвращает то, что мы ей скажем в тесте.
+// MockRepository is a mock implementation of the SubscriptionRepository interface.
+// It is used to simulate database behavior and verify calls from the service layer.
 type MockRepository struct {
 	mock.Mock
 }
+
+// Mocks
 
 func (m *MockRepository) Create(ctx context.Context, sub *model.Subscription) error {
 	args := m.Called(ctx, sub)
@@ -58,10 +59,9 @@ func (m *MockRepository) AggregateCost(ctx context.Context, userID *uuid.UUID, s
 	return args.Int(0), args.Error(1)
 }
 
-// --- 2. Пишем тесты ---
-
+// TestCreateSubscription verifies the service-level validation for new subscriptions,
+// ensuring that records are only saved if price and dates are valid.
 func TestCreateSubscription(t *testing.T) {
-	// Подготовка данных
 	mockRepo := new(MockRepository)
 	svc := service.NewSubscriptionService(mockRepo)
 	ctx := context.Background()
@@ -75,33 +75,33 @@ func TestCreateSubscription(t *testing.T) {
 			StartDate:   time.Now(),
 		}
 
-		// Настраиваем Mock: "Когда вызовут Create с этим sub, верни nil (нет ошибки)"
+		// Setting up Mock: "When Create is called with this sub, return nil (no error)"
 		mockRepo.On("Create", ctx, sub).Return(nil)
 
 		err := svc.Create(ctx, sub)
 
 		assert.NoError(t, err)
-		// Проверяем, что метод репозитория действительно был вызван
+		// Check that the repository method was actually called
 		mockRepo.AssertExpectations(t)
 	})
 
 	t.Run("Fail Validation Negative Price", func(t *testing.T) {
 		sub := &model.Subscription{
-			Price: -100, // Ошибка
+			Price: -100, // error
 		}
 
-		// Mock настраивать не нужно, так как до репозитория дело не дойдет
+		// No need to configure the mock, as it won't reach the repository:)
 		err := svc.Create(ctx, sub)
 
 		assert.Error(t, err)
 		assert.Equal(t, "price must be >= 0", err.Error())
-		// Убеждаемся, что репозиторий НЕ вызывался
+		// Make sure that the repository was NOT called
 		mockRepo.AssertNotCalled(t, "Create")
 	})
 
 	t.Run("Fail Validation Dates", func(t *testing.T) {
 		start := time.Now()
-		end := start.Add(-24 * time.Hour) // Дата окончания раньше начала
+		end := start.Add(-24 * time.Hour) // End date before start
 		sub := &model.Subscription{
 			Price:     100,
 			StartDate: start,
@@ -116,18 +116,20 @@ func TestCreateSubscription(t *testing.T) {
 	})
 }
 
+// TestListSubscriptions checks the service logic for handling pagination parameters,
+// specifically the assignment of default values for invalid limit and offset inputs.
 func TestListSubscriptions(t *testing.T) {
 	mockRepo := new(MockRepository)
 	svc := service.NewSubscriptionService(mockRepo)
 	ctx := context.Background()
 
 	t.Run("Default Limit/Offset Logic", func(t *testing.T) {
-		// Мы передаем limit=0, offset=-1
-		// Сервис должен превратить их в limit=20, offset=0 перед вызовом репозитория
-		
+		// We pass limit=0, offset=-1
+		// The service should turn them into limit=20, offset=0 before calling the repository
+
 		expectedList := []*model.Subscription{}
-		
-		// Ожидаем вызов с исправленными параметрами (20, 0)
+
+		// Expecting a call with corrected parameters (20, 0)
 		mockRepo.On("List", ctx, (*uuid.UUID)(nil), (*string)(nil), 20, 0).Return(expectedList, nil)
 
 		res, err := svc.List(ctx, nil, nil, 0, -1)
@@ -138,6 +140,8 @@ func TestListSubscriptions(t *testing.T) {
 	})
 }
 
+// TestAggregate ensures the cost calculation logic correctly handles date ranges
+// and prevents repository calls when the aggregation period is invalid.
 func TestAggregate(t *testing.T) {
 	mockRepo := new(MockRepository)
 	svc := service.NewSubscriptionService(mockRepo)
@@ -146,25 +150,25 @@ func TestAggregate(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		from := time.Now()
 		to := from.Add(24 * time.Hour)
-		
-		// Мок должен вернуть 500 рублей
+
+		// Mok must return 500 rubles
 		mockRepo.On("AggregateCost", ctx, (*uuid.UUID)(nil), (*string)(nil), from, to).Return(500, nil)
 
 		total, err := svc.Aggregate(ctx, nil, nil, from, to)
-		
+
 		assert.NoError(t, err)
 		assert.Equal(t, 500, total)
 	})
 
 	t.Run("Invalid Period", func(t *testing.T) {
 		from := time.Now()
-		to := from.Add(-24 * time.Hour) // 'to' раньше 'from'
+		to := from.Add(-24 * time.Hour) // 'to' before 'from'
 
 		total, err := svc.Aggregate(ctx, nil, nil, from, to)
 
 		assert.ErrorIs(t, err, service.ErrInvalidPeriod)
 		assert.Equal(t, 0, total)
-		// Убеждаемся, что в базу запрос не пошел
+		// Make sure that the request is not sent to the database
 		mockRepo.AssertNotCalled(t, "AggregateCost")
 	})
 }

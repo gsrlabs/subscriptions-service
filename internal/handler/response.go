@@ -6,10 +6,12 @@ import (
 	"net/http"
 )
 
+// errorResponse represents the standard JSON structure for returning API errors.
 type errorResponse struct {
 	Error string `json:"error"`
 }
 
+// writeJSON sends a JSON response with a specific HTTP status code and marshals the provided payload.
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -21,8 +23,8 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	}
 }
 
+// writeError logs the error message and sends a standardized JSON error response to the client.
 func writeError(w http.ResponseWriter, status int, msg string) {
 	log.Printf("ERROR: %s", msg)
 	writeJSON(w, status, errorResponse{Error: msg})
 }
-

@@ -17,23 +17,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupTestDB инициализирует соединение с БД и возвращает репозиторий + функцию очистки
+// setupTestDB initializes the test environment by loading configuration,
+// establishing a database connection, and returning a cleanup function to truncate tables.
 func setupTestDB(t *testing.T) (repository.SubscriptionRepository, func()) {
-	// 1. Загружаем env (для локального запуска)
-	_ = godotenv.Load("../../.env")
 
-	// Настройка путей для тестов, если запускаем из этой папки
+	envFile := "../../.env"
+	if err := godotenv.Load(envFile); err != nil {
+		log.Printf("INFO: %s not found", envFile)
+	}
+
+	// Setting up paths for tests if we run from this folder
 	if os.Getenv("MIGRATION_PATH_TEST") != "" {
 		os.Setenv("MIGRATION_PATH", os.Getenv("MIGRATION_PATH_TEST"))
 	} else {
-		// Fallback если переменная не задана (локальный запуск go test ./...)
 		os.Setenv("MIGRATION_PATH", "../../migrations")
 	}
-    
-    // Подменяем хост если есть тестовая переменная
-    if host := os.Getenv("DB_HOST_TEST"); host != "" {
-        os.Setenv("DB_HOST", host)
-    }
+
+	// Fallback if the variable is not set (local run of go test ./...)
+	if host := os.Getenv("DB_HOST_TEST"); host != "" {
+		os.Setenv("DB_HOST", host)
+	}
 
 	ctx := context.Background()
 	database, err := db.Connect(ctx)
@@ -41,7 +44,7 @@ func setupTestDB(t *testing.T) (repository.SubscriptionRepository, func()) {
 
 	repo := repository.NewSubscriptionRepository(database.Pool)
 
-	// Функция очистки (вызывается через defer в тесте)
+	// Cleans up (called via defer in the test)
 	cleanup := func() {
 		_, err := database.Pool.Exec(ctx, "TRUNCATE subscriptions RESTART IDENTITY CASCADE")
 		if err != nil {
@@ -53,17 +56,19 @@ func setupTestDB(t *testing.T) (repository.SubscriptionRepository, func()) {
 	return repo, cleanup
 }
 
+// TestSubscriptionCRUD verifies the full lifecycle of a subscription (Create, Read, Update, Delete)
+// using a real database connection.
 func TestSubscriptionCRUD(t *testing.T) {
-	// Подготовка
+
 	repo, cleanup := setupTestDB(t)
 	defer cleanup()
 
 	ctx := context.Background()
 
-	// Данные для теста
+	// Data for the test
 	userID := uuid.New()
 	startDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	
+
 	newSub := &model.Subscription{
 		UserID:      userID,
 		ServiceName: "Netflix",
@@ -86,7 +91,7 @@ func TestSubscriptionCRUD(t *testing.T) {
 		assert.Equal(t, newSub.ID, fetched.ID)
 		assert.Equal(t, "Netflix", fetched.ServiceName)
 		assert.Equal(t, 1000, fetched.Price)
-		// Проверяем дату (UTC, без времени, так как в БД тип date)
+		// Check the date (UTC, without time, as the database has a date type)
 		assert.Equal(t, startDate.Format("2006-01-02"), fetched.StartDate.Format("2006-01-02"))
 	})
 
@@ -94,11 +99,11 @@ func TestSubscriptionCRUD(t *testing.T) {
 	t.Run("Update", func(t *testing.T) {
 		newSub.Price = 1200
 		newSub.ServiceName = "Netflix Premium"
-		
+
 		err := repo.Update(ctx, newSub)
 		assert.NoError(t, err)
 
-		// Проверяем через Get, что обновилось
+		// Check through Get what has been updated
 		fetched, err := repo.GetByID(ctx, newSub.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, 1200, fetched.Price)
@@ -110,12 +115,14 @@ func TestSubscriptionCRUD(t *testing.T) {
 		err := repo.Delete(ctx, newSub.ID)
 		assert.NoError(t, err)
 
-		// Должны получить ошибку NotFound
+		// Should get a NotFound error
 		_, err = repo.GetByID(ctx, newSub.ID)
 		assert.ErrorIs(t, err, repository.ErrNotFound)
 	})
 }
 
+// TestListAndAggregation evaluates the repository's ability to filter records by various criteria
+// and correctly sum subscription costs over specific time periods.
 func TestListAndAggregation(t *testing.T) {
 	repo, cleanup := setupTestDB(t)
 	defer cleanup()
@@ -124,7 +131,7 @@ func TestListAndAggregation(t *testing.T) {
 	user1 := uuid.New()
 	user2 := uuid.New()
 
-	// Создаем тестовые данные
+	// Creating test data
 	subs := []*model.Subscription{
 		// User 1
 		{UserID: user1, ServiceName: "Yandex", Price: 300, StartDate: date(2025, 1, 1)},
@@ -152,8 +159,8 @@ func TestListAndAggregation(t *testing.T) {
 	})
 
 	t.Run("Aggregate Cost", func(t *testing.T) {
-		// Считаем сумму для User1 за период с Января по Март
-		// Должны попасть обе подписки (300 + 200 = 500)
+		// Calculate the amount for User1 for the period from January to March
+		// Both subscriptions should be included (300 + 200 = 500)
 		from := date(2025, 1, 1)
 		to := date(2025, 3, 1)
 
@@ -163,8 +170,8 @@ func TestListAndAggregation(t *testing.T) {
 	})
 
 	t.Run("Aggregate Cost Partial", func(t *testing.T) {
-		// Считаем сумму для User1 только за Январь
-		// Должна попасть только первая подписка (300)
+		// Calculate the amount for User1 only for January
+		// Only the first subscription (300) should be included
 		from := date(2025, 1, 1)
 		to := date(2025, 1, 31)
 
@@ -174,7 +181,7 @@ func TestListAndAggregation(t *testing.T) {
 	})
 }
 
-// Хелпер для быстрого создания даты
+// date is a test helper that returns a time.Time object for a given year, month, and day in UTC.
 func date(y, m, d int) time.Time {
 	return time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.UTC)
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Subscription — доменная модель подписки
+// Subscription represents the core domain model for a user's service subscription.
 type Subscription struct {
 	ID          uuid.UUID
 	UserID      uuid.UUID
@@ -18,8 +18,8 @@ type Subscription struct {
 	UpdatedAt   time.Time
 }
 
-// Data Transfer Object
-// CreateSubscriptionRequest — входящий запрос
+// CreateSubscriptionRequest defines the schema for incoming subscription creation or update data.
+// It includes validation tags for business rules like minimum price and date formats.
 type CreateSubscriptionRequest struct {
 	ServiceName string    `json:"service_name" validate:"required,min=2"`
 	Price       int       `json:"price" validate:"required,min=0"`
@@ -28,7 +28,8 @@ type CreateSubscriptionRequest struct {
 	EndDate     *string   `json:"end_date,omitempty" validate:"omitempty,mmYYYY"`
 }
 
-// SubscriptionResponse — ответ API
+// SubscriptionResponse represents the data structure returned to API clients.
+// It uses strings for dates to ensure consistent formatting across different platforms.
 type SubscriptionResponse struct {
 	ID          uuid.UUID `json:"id"`
 	ServiceName string    `json:"service_name"`

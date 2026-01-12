@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// SubscriptionRepository defines the interface for managing subscription data in the storage.
 type SubscriptionRepository interface {
 	Create(ctx context.Context, sub *model.Subscription) error
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Subscription, error)
@@ -34,7 +35,6 @@ type SubscriptionRepository interface {
 	) (int, error)
 }
 
-
 var (
 	ErrNotFound = errors.New("subscription not found")
 )
@@ -43,10 +43,12 @@ type subscriptionRepo struct {
 	pool *pgxpool.Pool
 }
 
+// NewSubscriptionRepository creates a new instance of the subscription repository using a pgx connection pool.
 func NewSubscriptionRepository(pool *pgxpool.Pool) SubscriptionRepository {
 	return &subscriptionRepo{pool: pool}
 }
 
+// Create inserts a new subscription record into the database and populates the ID and timestamps.
 func (r *subscriptionRepo) Create(ctx context.Context, sub *model.Subscription) error {
 	log.Printf("INFO: creating subscription for user %s", sub.UserID)
 
@@ -75,7 +77,7 @@ func (r *subscriptionRepo) Create(ctx context.Context, sub *model.Subscription) 
 	return nil
 }
 
-
+// GetByID retrieves a single subscription by its unique identifier. Returns ErrNotFound if no record exists.
 func (r *subscriptionRepo) GetByID(ctx context.Context, id uuid.UUID) (*model.Subscription, error) {
 	log.Printf("INFO: getting subscription %s", id)
 
@@ -110,6 +112,7 @@ func (r *subscriptionRepo) GetByID(ctx context.Context, id uuid.UUID) (*model.Su
 	return &sub, nil
 }
 
+// Update modifies an existing subscription record. Returns ErrNotFound if the subscription ID does not exist.
 func (r *subscriptionRepo) Update(ctx context.Context, sub *model.Subscription) error {
 	log.Printf("INFO: updating subscription %s", sub.ID)
 
@@ -146,6 +149,7 @@ func (r *subscriptionRepo) Update(ctx context.Context, sub *model.Subscription) 
 	return nil
 }
 
+// Delete removes a subscription record from the database by its ID. Returns ErrNotFound if no record was deleted.
 func (r *subscriptionRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	log.Printf("INFO: deleting subscription %s", id)
 
@@ -168,7 +172,7 @@ func (r *subscriptionRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-
+// List returns a slice of subscriptions based on optional filters (userID, serviceName) with pagination support.
 func (r *subscriptionRepo) List(
 	ctx context.Context,
 	userID *uuid.UUID,
@@ -223,6 +227,7 @@ func (r *subscriptionRepo) List(
 	return result, nil
 }
 
+// AggregateCost calculates the total cost of active subscriptions for a given user and service within a specific time range.
 func (r *subscriptionRepo) AggregateCost(
 	ctx context.Context,
 	userID *uuid.UUID,
@@ -260,4 +265,3 @@ func (r *subscriptionRepo) AggregateCost(
 	log.Printf("INFO: aggregated cost = %d", total)
 	return total, nil
 }
-
