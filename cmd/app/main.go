@@ -15,10 +15,24 @@ import (
 	"subscription-service/internal/service"
 
 	"github.com/go-chi/chi/v5"
+	httpSwagger "github.com/swaggo/http-swagger"
+	_ "subscription-service/docs"
 )
 
-// main is the entry point of the application. It orchestrates the initialization
-// of the database, repositories, services, and HTTP handlers, and starts the server.
+// @title Subscription Service API
+// @version 1.0
+// @description API Server for Subscription Management.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8088
+// @BasePath /
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -45,6 +59,8 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(handler.LoggingMiddleware)
 
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
+
 	r.Post("/subscriptions", subHandler.Create)
 	r.Get("/subscriptions/{id}", subHandler.Get)
 	r.Put("/subscriptions/{id}", subHandler.Update)
@@ -54,7 +70,7 @@ func main() {
 
 	// 6️⃣ HTTP server
 	server := &http.Server{
-		Addr:    ":" + getEnv("APP_PORT", "8080"),
+		Addr:    ":" + getEnv("APP_PORT", "8088"),
 		Handler: r,
 	}
 
