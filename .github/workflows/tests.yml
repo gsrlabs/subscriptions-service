@@ -57,7 +57,7 @@ jobs:
         DB_HOST: localhost
         DB_PORT: 5432
         DB_USER: postgres
-        DB_PASSWORD: password
+        DB_PASSWORD: password123
         DB_NAME: subscriptions
         MIGRATION_PATH_TEST: ../../migrations 
-      run: go test -v ./...
+      run: go test -v -p 1 ./...
