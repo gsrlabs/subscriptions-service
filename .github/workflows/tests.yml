@@ -12,7 +12,7 @@ jobs:
         image: postgres:18
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
+          POSTGRES_PASSWORD: password123
           POSTGRES_DB: subscriptions
         ports:
           - 5432:5432
@@ -44,7 +44,7 @@ jobs:
     #     DB_HOST: localhost
     #     DB_PORT: 5432
     #     DB_USER: postgres
-    #     DB_PASSWORD: password
+    #     DB_PASSWORD: password123
     #     DB_NAME: subscriptions
     #     MIGRATION_PATH: ./migrations # Здесь путь от корня проекта
     #   run: |
@@ -57,7 +57,7 @@ jobs:
         DB_HOST: localhost
         DB_PORT: 5432
         DB_USER: postgres
-        DB_PASSWORD: password
+        DB_PASSWORD: password123
         DB_NAME: subscriptions
         MIGRATION_PATH_TEST: ../../migrations 
-      run: go test -v ./...
+      run: go test -v -p 1 ./...

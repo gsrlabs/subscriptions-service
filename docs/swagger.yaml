@@ -9,16 +9,21 @@ definitions:
     properties:
       end_date:
         type: string
+        x-order: "5"
       price:
         minimum: 0
         type: integer
+        x-order: "2"
       service_name:
         minLength: 2
         type: string
+        x-order: "1"
       start_date:
         type: string
+        x-order: "4"
       user_id:
         type: string
+        x-order: "3"
     required:
     - price
     - service_name
@@ -29,23 +34,29 @@ definitions:
     properties:
       end_date:
         type: string
+        x-order: "6"
       id:
         type: string
+        x-order: "1"
       price:
         type: integer
+        x-order: "3"
       service_name:
         type: string
+        x-order: "2"
       start_date:
         type: string
+        x-order: "5"
       user_id:
         type: string
+        x-order: "4"
     type: object
-host: localhost:8088
+host: localhost:8090
 info:
   contact:
-    email: support@swagger.io
+    email: gsrnode@gmail.com
     name: API Support
-    url: http://www.swagger.io/support
+    url: https://github.com/gsrlabs/subscriptions-service
   description: API Server for Subscription Management.
   license:
     name: Apache 2.0
@@ -59,6 +70,7 @@ paths:
       description: List subscriptions with optional filters
       parameters:
       - description: User ID
+        format: uuid
         in: query
         name: user_id
         type: string
@@ -128,6 +140,8 @@ paths:
       description: Delete subscription by ID
       parameters:
       - description: Subscription ID
+        example: '"550e8400-e29b-41d4-a716-446655440000"'
+        format: uuid
         in: path
         name: id
         required: true
@@ -150,6 +164,8 @@ paths:
       description: Get subscription by ID
       parameters:
       - description: Subscription ID
+        example: '"550e8400-e29b-41d4-a716-446655440000"'
+        format: uuid
         in: path
         name: id
         required: true
@@ -178,6 +194,8 @@ paths:
       description: Update subscription by ID
       parameters:
       - description: Subscription ID
+        example: '"550e8400-e29b-41d4-a716-446655440000"'
+        format: uuid
         in: path
         name: id
         required: true
@@ -210,21 +228,25 @@ paths:
     get:
       description: Calculate total cost of subscriptions for a period
       parameters:
-      - description: Start period (MM-YYYY)
+      - description: Start period
+        example: '"01-2025"'
         in: query
         name: from
         required: true
         type: string
-      - description: End period (MM-YYYY)
+      - description: End period
+        example: '"12-2025"'
         in: query
         name: to
         required: true
         type: string
       - description: User ID
+        format: uuid
         in: query
         name: user_id
         type: string
       - description: Service name
+        example: '"Netflix"'
         in: query
         name: service_name
         type: string
@@ -232,7 +254,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: 'Example: {"total": 1500}'
           schema:
             additionalProperties:
               type: integer

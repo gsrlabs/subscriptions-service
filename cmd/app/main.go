@@ -27,8 +27,8 @@ import (
 // @termsOfService http://swagger.io/terms/
 
 // @contact.name API Support
-// @contact.url https://github.com/gsrlabs
-// @contact.email gsrnode@mail.com
+// @contact.url https://github.com/gsrlabs/subscriptions-service
+// @contact.email gsrnode@gmail.com
 
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
@@ -76,7 +76,6 @@ func main() {
 	r.Get("/subscriptions/summary", subHandler.Summary)
 
 	// 6️⃣ HTTP server
-
 	server := &http.Server{
 		Addr:    ":" + cfg.App.Port,
 		Handler: r,

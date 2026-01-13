@@ -12,8 +12,8 @@ const docTemplate = `{
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",
-            "url": "http://www.swagger.io/support",
-            "email": "support@swagger.io"
+            "url": "https://github.com/gsrlabs/subscriptions-service",
+            "email": "gsrnode@gmail.com"
         },
         "license": {
             "name": "Apache 2.0",
@@ -37,6 +37,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "format": "uuid",
                         "description": "User ID",
                         "name": "user_id",
                         "in": "query"
@@ -142,26 +143,30 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Start period (MM-YYYY)",
+                        "example": "\"01-2025\"",
+                        "description": "Start period",
                         "name": "from",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "End period (MM-YYYY)",
+                        "example": "\"12-2025\"",
+                        "description": "End period",
                         "name": "to",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "string",
+                        "format": "uuid",
                         "description": "User ID",
                         "name": "user_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
+                        "example": "\"Netflix\"",
                         "description": "Service name",
                         "name": "service_name",
                         "in": "query"
@@ -169,7 +174,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Example: {\"total\": 1500}",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -199,6 +204,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "format": "uuid",
+                        "example": "\"550e8400-e29b-41d4-a716-446655440000\"",
                         "description": "Subscription ID",
                         "name": "id",
                         "in": "path",
@@ -241,6 +248,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "format": "uuid",
+                        "example": "\"550e8400-e29b-41d4-a716-446655440000\"",
                         "description": "Subscription ID",
                         "name": "id",
                         "in": "path",
@@ -286,6 +295,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "format": "uuid",
+                        "example": "\"550e8400-e29b-41d4-a716-446655440000\"",
                         "description": "Subscription ID",
                         "name": "id",
                         "in": "path",
@@ -330,45 +341,56 @@ const docTemplate = `{
                 "user_id"
             ],
             "properties": {
-                "end_date": {
-                    "type": "string"
+                "service_name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "x-order": "1"
                 },
                 "price": {
                     "type": "integer",
-                    "minimum": 0
-                },
-                "service_name": {
-                    "type": "string",
-                    "minLength": 2
-                },
-                "start_date": {
-                    "type": "string"
+                    "minimum": 0,
+                    "x-order": "2"
                 },
                 "user_id": {
-                    "type": "string"
+                    "type": "string",
+                    "x-order": "3"
+                },
+                "start_date": {
+                    "type": "string",
+                    "x-order": "4"
+                },
+                "end_date": {
+                    "type": "string",
+                    "x-order": "5"
                 }
             }
         },
         "model.SubscriptionResponse": {
             "type": "object",
             "properties": {
-                "end_date": {
-                    "type": "string"
-                },
                 "id": {
-                    "type": "string"
-                },
-                "price": {
-                    "type": "integer"
+                    "type": "string",
+                    "x-order": "1"
                 },
                 "service_name": {
-                    "type": "string"
+                    "type": "string",
+                    "x-order": "2"
                 },
-                "start_date": {
-                    "type": "string"
+                "price": {
+                    "type": "integer",
+                    "x-order": "3"
                 },
                 "user_id": {
-                    "type": "string"
+                    "type": "string",
+                    "x-order": "4"
+                },
+                "start_date": {
+                    "type": "string",
+                    "x-order": "5"
+                },
+                "end_date": {
+                    "type": "string",
+                    "x-order": "6"
                 }
             }
         }
@@ -378,7 +400,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8088",
+	Host:             "localhost:8090",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Subscription Service API",
