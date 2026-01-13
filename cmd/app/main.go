@@ -9,14 +9,16 @@ import (
 	"syscall"
 	"time"
 
+	"subscription-service/internal/config"
 	"subscription-service/internal/db"
 	"subscription-service/internal/handler"
 	"subscription-service/internal/repository"
 	"subscription-service/internal/service"
 
+	_ "subscription-service/docs"
+
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger"
-	_ "subscription-service/docs"
 )
 
 // @title Subscription Service API
@@ -39,8 +41,13 @@ func main() {
 
 	log.Printf("INFO: starting application")
 
+	cfg, err := config.Load("config/config.yml")
+	if err != nil {
+		log.Fatalf("ERROR: load config: %v", err)
+	}
+
 	// 1️⃣ DB
-	database, err := db.Connect(ctx)
+	database, err := db.Connect(ctx, cfg)
 	if err != nil {
 		log.Fatalf("ERROR: failed to connect to database: %v", err)
 	}
@@ -69,8 +76,9 @@ func main() {
 	r.Get("/subscriptions/summary", subHandler.Summary)
 
 	// 6️⃣ HTTP server
+
 	server := &http.Server{
-		Addr:    ":" + getEnv("APP_PORT", "8090"),
+		Addr:    ":" + cfg.App.Port,
 		Handler: r,
 	}
 
@@ -101,13 +109,4 @@ func waitForShutdown(ctx context.Context, server *http.Server) {
 	}
 
 	log.Printf("INFO: application stopped")
-}
-
-// getEnv retrieves the value of the environment variable named by the key
-// or returns a fallback value if the variable is empty.
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }

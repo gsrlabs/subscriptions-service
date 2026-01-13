@@ -2,53 +2,52 @@ package db
 
 import (
 	"context"
-	"log"
 	"os"
+
+	"subscription-service/internal/config"
 	"testing"
 
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
-// TestMain sets up the test environment by loading environment variables and
-// overriding database configuration specifically for integration testing.
-func TestMain(m *testing.M) {
-
-	envFile := "../../.env"
-	if err := godotenv.Load(envFile); err != nil {
-		log.Printf("INFO: %s not found, using environment variables", envFile)
+// getTestConfig loads and returns configuration for testing.
+func getTestConfig() *config.Config {
+	if os.Getenv("DB_PASSWORD") == "" {
+		os.Setenv("DB_PASSWORD", "password")
+	}
+	cfg, err := config.Load("../../config/config.yml")
+	if err != nil {
+		cfg, err = config.Load("config/config.yml")
+		if err != nil {
+			panic("failed to load config for tests: " + err.Error())
+		}
 	}
 
-	// REDEFINE variables for tests.
-	// If there are test settings in .env, replace the main ones with them.
-
-	// Replace the host (postgres -> localhost)
-	if testHost := os.Getenv("DB_HOST_TEST"); testHost != "" {
-		os.Setenv("DB_HOST", testHost)
+	// Apply settings for tests
+	if cfg.Test.DBHost != "" {
+		cfg.Database.Host = cfg.Test.DBHost
+	} else {
+		cfg.Database.Host = "localhost"
 	}
 
-	// Replace the path to migrations (./migrations -> ../../migrations)
-	if testPath := os.Getenv("MIGRATION_PATH_TEST"); testPath != "" {
-		os.Setenv("MIGRATION_PATH", testPath)
+	if cfg.Test.MigrationsPath != "" {
+		cfg.Migrations.Path = cfg.Test.MigrationsPath
+	} else {
+		cfg.Migrations.Path = "../../migrations"
 	}
 
-	// Running tests
-	code := m.Run()
-
-	// (Optional) You can clear the variables, but the process still ends
-	os.Exit(code)
+	return cfg
 }
 
 // TestDatabaseConnectionAndMigrations verifies that the application can successfully
 // connect to the database and that the migration tool (Goose) has initialized its version table.
 func TestDatabaseConnectionAndMigrations(t *testing.T) {
-	if os.Getenv("DB_HOST") == "" {
-		t.Skip("DB env variables are not set")
-	}
+
+	cfg := getTestConfig()
 
 	ctx := context.Background()
 
-	database, err := Connect(ctx)
+	database, err := Connect(ctx, cfg)
 	if err != nil {
 		t.Fatalf("failed to connect to database: %v", err)
 	}
@@ -58,7 +57,7 @@ func TestDatabaseConnectionAndMigrations(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, database)
 
-	// Проверяем, что служебная таблица goose существует
+	// Checking that the goose utility table exists
 	var exists bool
 	err = database.Pool.QueryRow(
 		ctx,
@@ -74,12 +73,11 @@ func TestDatabaseConnectionAndMigrations(t *testing.T) {
 // TestSubscriptionsTableExists confirms that the 'subscriptions' table was correctly
 // created in the database schema after running migrations.
 func TestSubscriptionsTableExists(t *testing.T) {
-	if os.Getenv("DB_HOST") == "" {
-		t.Skip("DB env variables are not set")
-	}
+
+	cfg := getTestConfig()
 
 	ctx := context.Background()
-	database, err := Connect(ctx)
+	database, err := Connect(ctx, cfg)
 	assert.NoError(t, err)
 	defer database.Pool.Close()
 
@@ -102,12 +100,11 @@ func TestSubscriptionsTableExists(t *testing.T) {
 // TestSubscriptionsIndexesExist ensures that all critical performance indexes
 // defined in the migrations are present in the database.
 func TestSubscriptionsIndexesExist(t *testing.T) {
-	if os.Getenv("DB_HOST") == "" {
-		t.Skip("DB env variables are not set")
-	}
+
+	cfg := getTestConfig()
 
 	ctx := context.Background()
-	database, err := Connect(ctx)
+	database, err := Connect(ctx, cfg)
 	assert.NoError(t, err)
 	defer database.Pool.Close()
 
