@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"context"
+
 	"encoding/json"
 	"log"
 	"net/http"
@@ -69,7 +69,7 @@ func (h *SubscriptionHandler) Create(w http.ResponseWriter, r *http.Request) {
 // @Description Get subscription by ID
 // @Tags subscriptions
 // @Produce json
-// @Param id path string true "Subscription ID"
+// @Param id path string true "Subscription ID" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
 // @Success 200 {object} model.SubscriptionResponse
 // @Failure 400 {object} handler.errorResponse
 // @Failure 404 {object} handler.errorResponse
@@ -98,7 +98,7 @@ func (h *SubscriptionHandler) Get(w http.ResponseWriter, r *http.Request) {
 // @Tags subscriptions
 // @Accept json
 // @Produce json
-// @Param id path string true "Subscription ID"
+// @Param id path string true "Subscription ID" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
 // @Param subscription body model.CreateSubscriptionRequest true "Updated subscription data"
 // @Success 200 {object} model.SubscriptionResponse
 // @Failure 400 {object} handler.errorResponse
@@ -142,7 +142,7 @@ func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 // @Summary Delete subscription
 // @Description Delete subscription by ID
 // @Tags subscriptions
-// @Param id path string true "Subscription ID"
+// @Param id path string true "Subscription ID" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
 // @Success 204
 // @Failure 400 {object} handler.errorResponse
 // @Failure 500 {object} handler.errorResponse
@@ -168,7 +168,7 @@ func (h *SubscriptionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 // @Description List subscriptions with optional filters
 // @Tags subscriptions
 // @Produce json
-// @Param user_id query string false "User ID"
+// @Param user_id query string false "User ID" format(uuid)
 // @Param service_name query string false "Service name"
 // @Param limit query int false "Limit"
 // @Param offset query int false "Offset"
@@ -199,7 +199,7 @@ func (h *SubscriptionHandler) List(w http.ResponseWriter, r *http.Request) {
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 
 	subs, err := h.service.List(
-		context.Background(),
+		r.Context(),
 		userID,
 		serviceName,
 		limit,
@@ -218,16 +218,15 @@ func (h *SubscriptionHandler) List(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// Summary godoc
 // @Summary Aggregate subscriptions cost
 // @Description Calculate total cost of subscriptions for a period
 // @Tags subscriptions
 // @Produce json
-// @Param from query string true "Start period (MM-YYYY)"
-// @Param to query string true "End period (MM-YYYY)"
-// @Param user_id query string false "User ID"
-// @Param service_name query string false "Service name"
-// @Success 200 {object} map[string]int
+// @Param from query string true "Start period" example("01-2026")
+// @Param to query string true "End period" example("12-2026")
+// @Param user_id query string false "User ID" format(uuid)
+// @Param service_name query string false "Service name" example("Netflix")
+// @Success 200 {object} map[string]int "Example: {"total": 1500}"
 // @Failure 400 {object} handler.errorResponse
 // @Router /subscriptions/summary [get]
 func (h *SubscriptionHandler) Summary(w http.ResponseWriter, r *http.Request) {

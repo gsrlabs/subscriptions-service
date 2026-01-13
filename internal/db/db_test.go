@@ -2,28 +2,59 @@ package db
 
 import (
 	"context"
+	"log"
 	"os"
 
 	"subscription-service/internal/config"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
 // getTestConfig loads and returns configuration for testing.
 func getTestConfig() *config.Config {
-	if os.Getenv("DB_PASSWORD") == "" {
-		os.Setenv("DB_PASSWORD", "password")
+	envPaths := []string{
+		"../../.env",
+		"../.env",
+		".env",
 	}
-	cfg, err := config.Load("../../config/config.yml")
-	if err != nil {
-		cfg, err = config.Load("config/config.yml")
-		if err != nil {
-			panic("failed to load config for tests: " + err.Error())
+
+	for _, p := range envPaths {
+		if err := godotenv.Load(p); err == nil {
+			log.Printf("INFO: loaded env from %s", p)
+			break
 		}
 	}
 
-	// Apply settings for tests
+	dbPass := os.Getenv("DB_PASSWORD")
+	if dbPass == "" {
+		panic("DB_PASSWORD is not set for tests")
+	}
+
+	configPaths := []string{
+		"../../config/config.yml",
+		"../config/config.yml",
+		"config/config.yml",
+	}
+
+	var cfg *config.Config
+	var err error
+
+	for _, p := range configPaths {
+		cfg, err = config.Load(p)
+		if err == nil {
+			log.Printf("INFO: loaded config from %s", p)
+			break
+		}
+	}
+
+	if err != nil {
+		panic("failed to load config.yml for tests")
+	}
+
+	cfg.Database.Password = dbPass
+	
 	if cfg.Test.DBHost != "" {
 		cfg.Database.Host = cfg.Test.DBHost
 	} else {

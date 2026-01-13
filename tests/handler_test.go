@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"os"
+
 	"net/http"
 	"net/http/httptest"
-	"os"
+
 	"testing"
 
 	"subscription-service/internal/config"
@@ -16,6 +19,8 @@ import (
 	"subscription-service/internal/handler"
 	"subscription-service/internal/repository"
 	"subscription-service/internal/service"
+
+	"github.com/joho/godotenv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -28,14 +33,46 @@ import (
 // It tries to load config from multiple paths and applies test-specific overrides.
 func getTestConfig() *config.Config {
 
-	cfg, err := config.Load("../config/config.yml")
-	if err != nil {
+	envPaths := []string{
+		"../../.env",
+		"../.env",
+		".env",
+	}
 
-		cfg, err = config.Load("config/config.yml")
-		if err != nil {
-			panic("failed to load config for tests: " + err.Error())
+	for _, p := range envPaths {
+		if err := godotenv.Load(p); err == nil {
+			log.Printf("INFO: loaded env from %s", p)
+			break
 		}
 	}
+
+	dbPass := os.Getenv("DB_PASSWORD")
+	if dbPass == "" {
+		panic("DB_PASSWORD is not set for tests")
+	}
+
+	configPaths := []string{
+		"../../config/config.yml",
+		"../config/config.yml",
+		"config/config.yml",
+	}
+
+	var cfg *config.Config
+	var err error
+
+	for _, p := range configPaths {
+		cfg, err = config.Load(p)
+		if err == nil {
+			log.Printf("INFO: loaded config from %s", p)
+			break
+		}
+	}
+
+	if err != nil {
+		panic("failed to load config.yml for tests")
+	}
+
+	cfg.Database.Password = dbPass
 
 	if cfg.Test.DBHost != "" {
 		cfg.Database.Host = cfg.Test.DBHost
@@ -55,10 +92,6 @@ func getTestConfig() *config.Config {
 // setupTestServer initializes a test HTTP server with all dependencies.
 // It returns the test server instance and a cleanup function.
 func setupTestServer(t *testing.T) (*httptest.Server, func()) {
-
-	if os.Getenv("DB_PASSWORD") == "" {
-		os.Setenv("DB_PASSWORD", "password")
-	}
 
 	// Load the config with the path RELATIVE to db_test.go
 	cfg := getTestConfig()
@@ -116,7 +149,7 @@ func request(t *testing.T, url string, method string, payload any) ([]byte, int)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -227,7 +260,7 @@ func TestSubscriptionLifecycle(t *testing.T) {
 			"price":        -500,
 			"start_date":   "01-2025",
 		}
-		resp, status = postJSON(t, baseURL, badPrice)
+		_, status = postJSON(t, baseURL, badPrice)
 		assert.Equal(t, http.StatusBadRequest, status)
 	})
 }
