@@ -7,39 +7,54 @@ import (
 	"testing"
 	"time"
 
+	"subscription-service/internal/config"
 	"subscription-service/internal/db"
 	"subscription-service/internal/model"
 	"subscription-service/internal/repository"
 
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func getTestConfig() *config.Config {
+
+	if os.Getenv("DB_PASSWORD") == "" {
+		os.Setenv("DB_PASSWORD", "password")
+	}
+
+	cfg, err := config.Load("../../config/config.yml")
+	if err != nil {
+		cfg, err = config.Load("config/config.yml")
+		if err != nil {
+			panic("failed to load config for tests: " + err.Error())
+		}
+	}
+
+	if cfg.Test.DBHost != "" {
+		cfg.Database.Host = cfg.Test.DBHost
+	} else {
+		cfg.Database.Host = "localhost"
+	}
+
+	if cfg.Test.MigrationsPath != "" {
+		cfg.Migrations.Path = cfg.Test.MigrationsPath
+	} else {
+		cfg.Migrations.Path = "../../migrations"
+	}
+
+	return cfg
+}
 
 // setupTestDB initializes the test environment by loading configuration,
 // establishing a database connection, and returning a cleanup function to truncate tables.
 func setupTestDB(t *testing.T) (repository.SubscriptionRepository, func()) {
 
-	envFile := "../../.env"
-	if err := godotenv.Load(envFile); err != nil {
-		log.Printf("INFO: %s not found", envFile)
-	}
-
-	// Setting up paths for tests if we run from this folder
-	if os.Getenv("MIGRATION_PATH_TEST") != "" {
-		os.Setenv("MIGRATION_PATH", os.Getenv("MIGRATION_PATH_TEST"))
-	} else {
-		os.Setenv("MIGRATION_PATH", "../../migrations")
-	}
-
-	// Fallback if the variable is not set (local run of go test ./...)
-	if host := os.Getenv("DB_HOST_TEST"); host != "" {
-		os.Setenv("DB_HOST", host)
-	}
+	cfg := getTestConfig()
 
 	ctx := context.Background()
-	database, err := db.Connect(ctx)
+	database, err := db.Connect(ctx, cfg)
 	require.NoError(t, err, "failed to connect to db")
 
 	repo := repository.NewSubscriptionRepository(database.Pool)

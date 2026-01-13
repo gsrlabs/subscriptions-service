@@ -1,0 +1,19 @@
+app:
+  port: 8090
+
+database:
+  host: postgres
+  port: 5432
+  user: postgres
+  name: subscriptions
+  sslmode: disable
+  max_conns: 5
+  min_conns: 1
+
+migrations:
+  path: ./migrations
+
+test:
+  db_host: localhost
+  migrations_path: ../../migrations
+  handler_migrations_path: ../migrations

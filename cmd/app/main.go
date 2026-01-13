@@ -9,24 +9,45 @@ import (
 	"syscall"
 	"time"
 
+	"subscription-service/internal/config"
 	"subscription-service/internal/db"
 	"subscription-service/internal/handler"
 	"subscription-service/internal/repository"
 	"subscription-service/internal/service"
 
+	_ "subscription-service/docs"
+
 	"github.com/go-chi/chi/v5"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-// main is the entry point of the application. It orchestrates the initialization
-// of the database, repositories, services, and HTTP handlers, and starts the server.
+// @title Subscription Service API
+// @version 1.0
+// @description API Server for Subscription Management.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url https://github.com/gsrlabs
+// @contact.email gsrnode@mail.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8090
+// @BasePath /
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	log.Printf("INFO: starting application")
 
+	cfg, err := config.Load("config/config.yml")
+	if err != nil {
+		log.Fatalf("ERROR: load config: %v", err)
+	}
+
 	// 1️⃣ DB
-	database, err := db.Connect(ctx)
+	database, err := db.Connect(ctx, cfg)
 	if err != nil {
 		log.Fatalf("ERROR: failed to connect to database: %v", err)
 	}
@@ -45,6 +66,8 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(handler.LoggingMiddleware)
 
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
+
 	r.Post("/subscriptions", subHandler.Create)
 	r.Get("/subscriptions/{id}", subHandler.Get)
 	r.Put("/subscriptions/{id}", subHandler.Update)
@@ -53,8 +76,9 @@ func main() {
 	r.Get("/subscriptions/summary", subHandler.Summary)
 
 	// 6️⃣ HTTP server
+
 	server := &http.Server{
-		Addr:    ":" + getEnv("APP_PORT", "8080"),
+		Addr:    ":" + cfg.App.Port,
 		Handler: r,
 	}
 
@@ -85,13 +109,4 @@ func waitForShutdown(ctx context.Context, server *http.Server) {
 	}
 
 	log.Printf("INFO: application stopped")
-}
-
-// getEnv retrieves the value of the environment variable named by the key
-// or returns a fallback value if the variable is empty.
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }

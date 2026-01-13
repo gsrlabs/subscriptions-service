@@ -6,13 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
-
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
+	"subscription-service/internal/config"
 	"subscription-service/internal/db"
 	"subscription-service/internal/handler"
 	"subscription-service/internal/repository"
@@ -20,43 +19,65 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// --- 1. SETUP (Настройка окружения) ---
+// getTestConfig loads and returns configuration for testing.
+// It tries to load config from multiple paths and applies test-specific overrides.
+func getTestConfig() *config.Config {
 
+	cfg, err := config.Load("../config/config.yml")
+	if err != nil {
+
+		cfg, err = config.Load("config/config.yml")
+		if err != nil {
+			panic("failed to load config for tests: " + err.Error())
+		}
+	}
+
+	if cfg.Test.DBHost != "" {
+		cfg.Database.Host = cfg.Test.DBHost
+	} else {
+		cfg.Database.Host = "localhost"
+	}
+
+	if cfg.Test.HandlerMigrationsPath != "" {
+		cfg.Migrations.Path = cfg.Test.HandlerMigrationsPath
+	} else {
+		cfg.Migrations.Path = "../migrations"
+	}
+
+	return cfg
+}
+
+// setupTestServer initializes a test HTTP server with all dependencies.
+// It returns the test server instance and a cleanup function.
 func setupTestServer(t *testing.T) (*httptest.Server, func()) {
 
-	envFile := "../.env"
-	if err := godotenv.Load(envFile); err != nil {
-		log.Printf("INFO: %s not found", envFile)
+	if os.Getenv("DB_PASSWORD") == "" {
+		os.Setenv("DB_PASSWORD", "password")
 	}
 
-	// 2. ПРИНУДИТЕЛЬНО меняем хост для локального запуска тестов
-	// Если мы не в Docker, нам нужно подключаться к localhost
-	if os.Getenv("DB_HOST_TEST") != "" {
-		os.Setenv("DB_HOST", os.Getenv("DB_HOST_TEST"))
-	}
+	// Load the config with the path RELATIVE to db_test.go
+	cfg := getTestConfig()
 
-	os.Setenv("MIGRATION_PATH", "../migrations")
-
-	// Подключение к БД
+	// Connecting to the database
 	ctx := context.Background()
-	database, err := db.Connect(ctx)
-	require.NoError(t, err, "Не удалось подключиться к БД")
+	database, err := db.Connect(ctx, cfg)
+	require.NoError(t, err, "Couldn't connect to the database")
 
-	// Чистим таблицу перед тестом
+	// Cleaning the table before testing
 	_, err = database.Pool.Exec(ctx, "TRUNCATE subscriptions RESTART IDENTITY CASCADE")
 	require.NoError(t, err)
 
-	// Собираем слои
+	// Collecting layers
 	repo := repository.NewSubscriptionRepository(database.Pool)
 	svc := service.NewSubscriptionService(repo)
 	h := handler.NewSubscriptionHandler(svc)
 
-	// Роутер (как в main.go)
+	// Router (as in main.go)
 	r := chi.NewRouter()
 	r.Post("/subscriptions", h.Create)
 	r.Get("/subscriptions/{id}", h.Get)
@@ -65,10 +86,10 @@ func setupTestServer(t *testing.T) (*httptest.Server, func()) {
 	r.Get("/subscriptions", h.List)
 	r.Get("/subscriptions/summary", h.Summary)
 
-	// Запускаем тестовый HTTP сервер
+	// Starting the test HTTP server
 	ts := httptest.NewServer(r)
 
-	// Функция очистки
+	// Cleaning function
 	cleanup := func() {
 		ts.Close()
 		database.Pool.Close()
@@ -77,9 +98,8 @@ func setupTestServer(t *testing.T) (*httptest.Server, func()) {
 	return ts, cleanup
 }
 
-// --- 2. HELPERS (Помощники, адаптированные из твоего шаблона) ---
-
-// request выполняет HTTP запрос и возвращает тело ответа и статус код
+// request sends an HTTP request to the specified URL and returns the response body and status code.
+// It handles JSON payload serialization and sets appropriate headers.
 func request(t *testing.T, url string, method string, payload any) ([]byte, int) {
 	var body io.Reader
 
@@ -104,24 +124,25 @@ func request(t *testing.T, url string, method string, payload any) ([]byte, int)
 	return respBody, resp.StatusCode
 }
 
-// postJSON делает POST и сразу пытается распарсить ответ в Map (для удобства проверок)
+// postJSON sends a POST request with JSON payload and parses the response as a map.
+// It's a convenience wrapper for testing JSON APIs.
 func postJSON(t *testing.T, url string, payload any) (map[string]any, int) {
 	body, status := request(t, url, http.MethodPost, payload)
 
 	var result map[string]any
-	// Если статус OK/Created, ожидаем JSON, иначе может быть пусто или ошибка
+	// Parse successful responses as JSON
 	if status < 400 && len(body) > 0 {
 		err := json.Unmarshal(body, &result)
 		require.NoError(t, err, "Ответ сервера не является валидным JSON: %s", string(body))
 	} else if len(body) > 0 {
-		// Пытаемся распарсить ошибку
+		// Try to parse error responses
 		_ = json.Unmarshal(body, &result)
 	}
 	return result, status
 }
 
-// --- 3. TESTS (Сами тесты) ---
-
+// TestSubscriptionLifecycle tests the complete CRUD lifecycle of a subscription.
+// It covers creation, retrieval, update, and deletion operations.
 func TestSubscriptionLifecycle(t *testing.T) {
 	ts, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -129,7 +150,6 @@ func TestSubscriptionLifecycle(t *testing.T) {
 	baseURL := ts.URL + "/subscriptions"
 	userID := uuid.New().String()
 
-	// Сценарий 1: Создание подписки (Успех)
 	t.Run("Create Success", func(t *testing.T) {
 		payload := map[string]any{
 			"user_id":      userID,
@@ -145,10 +165,8 @@ func TestSubscriptionLifecycle(t *testing.T) {
 		assert.Equal(t, "Netflix", resp["service_name"])
 		assert.Equal(t, "01-2025", resp["start_date"])
 
-		// Сохраняем ID для следующих тестов
 		createdID := resp["id"].(string)
-
-		// Сценарий 2: Получение (Get)
+		//Successful subscription creation
 		t.Run("Get Success", func(t *testing.T) {
 			body, status := request(t, baseURL+"/"+createdID, http.MethodGet, nil)
 			assert.Equal(t, http.StatusOK, status)
@@ -158,15 +176,15 @@ func TestSubscriptionLifecycle(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, createdID, sub["id"])
-			assert.Equal(t, float64(1500), sub["price"]) // JSON числа это float64
+			assert.Equal(t, float64(1500), sub["price"]) // JSON numbers are float64
 		})
 
-		// Сценарий 3: Обновление (Update)
+		// Update
 		t.Run("Update Success", func(t *testing.T) {
 			updatePayload := map[string]any{
 				"user_id":      userID,
-				"service_name": "Netflix Premium", // Поменяли имя
-				"price":        2000,              // Поменяли цену
+				"service_name": "Netflix Premium", // Changed name
+				"price":        2000,              // Changed price
 				"start_date":   "01-2025",
 			}
 
@@ -179,31 +197,30 @@ func TestSubscriptionLifecycle(t *testing.T) {
 			assert.Equal(t, "Netflix Premium", sub["service_name"])
 		})
 
-		// Сценарий 4: Удаление (Delete)
+		// Delete
 		t.Run("Delete Success", func(t *testing.T) {
 			_, status := request(t, baseURL+"/"+createdID, http.MethodDelete, nil)
 			assert.Equal(t, http.StatusNoContent, status)
 
-			// Проверяем, что больше не находится
 			_, statusGet := request(t, baseURL+"/"+createdID, http.MethodGet, nil)
 			assert.Equal(t, http.StatusNotFound, statusGet)
 		})
 	})
 
-	// Сценарий 5: Ошибки валидации
+	// Error: Invalid date format
 	t.Run("Validation Errors", func(t *testing.T) {
-		// Ошибка: неверный формат даты
+		// Error: Invalid date format
 		badDate := map[string]any{
 			"user_id":      userID,
 			"service_name": "Bad Date Service",
 			"price":        100,
-			"start_date":   "2025-01-01", // Мы ждем MM-YYYY
+			"start_date":   "2025-01-01", // We are waiting for MM-YYYY
 		}
 		resp, status := postJSON(t, baseURL, badDate)
 		assert.Equal(t, http.StatusBadRequest, status)
-		assert.Contains(t, fmt.Sprint(resp["error"]), "mmYYYY") // Ошибка валидатора
+		assert.Contains(t, fmt.Sprint(resp["error"]), "mmYYYY") // Validator error
 
-		// Ошибка: цена меньше 0
+		// Error: the price is less than 0
 		badPrice := map[string]any{
 			"user_id":      userID,
 			"service_name": "Negative Price",
@@ -223,7 +240,7 @@ func TestListAndSummary(t *testing.T) {
 	user1 := uuid.New().String()
 	user2 := uuid.New().String()
 
-	// Заполняем базу данными
+	// Filling in the database with data
 	create := func(uid, name string, price int, date string) {
 		payload := map[string]any{
 			"user_id": uid, "service_name": name, "price": price, "start_date": date,
@@ -237,7 +254,7 @@ func TestListAndSummary(t *testing.T) {
 	create(user2, "Spotify", 150, "01-2025")
 
 	t.Run("List Filter", func(t *testing.T) {
-		// Фильтр по user_id
+		// Filter by user_id
 		body, status := request(t, baseURL+"?user_id="+user1, http.MethodGet, nil)
 		assert.Equal(t, http.StatusOK, status)
 
@@ -245,12 +262,12 @@ func TestListAndSummary(t *testing.T) {
 		err := json.Unmarshal(body, &list)
 		require.NoError(t, err)
 
-		assert.Len(t, list, 2) // У user1 две подписки
+		assert.Len(t, list, 2) // user1 has two subscriptions
 	})
 
 	t.Run("Summary", func(t *testing.T) {
-		// Сумма для user1 за период 01-2025 по 03-2025
-		// Должно быть 300 + 200 = 500
+		// Amount for user1 for the period 01-2025 to 03-2025
+		// Should be 300 + 200 = 500
 		u := fmt.Sprintf("%s/summary?user_id=%s&from=01-2025&to=03-2025", baseURL, user1)
 
 		body, status := request(t, u, http.MethodGet, nil)

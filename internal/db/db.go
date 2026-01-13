@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
+	"subscription-service/internal/config"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -20,39 +20,40 @@ type Database struct {
 
 // Connect establishes a connection pool to PostgreSQL using environment variables
 // and automatically executes pending migrations.
-func Connect(ctx context.Context) (*Database, error) {
+func Connect(ctx context.Context, cfg *config.Config) (*Database, error) {
+
 	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_NAME"),
-		getEnv("DB_SSLMODE", "disable"),
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		cfg.Database.User,
+		cfg.Database.Password,
+		cfg.Database.Host,
+		cfg.Database.Port,
+		cfg.Database.Name,
+		cfg.Database.SSLMode,
 	)
 
-	cfg, err := pgxpool.ParseConfig(dsn)
+	pgcfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("parse pgx config: %w", err)
 	}
 
-	cfg.MaxConns = 5
-	cfg.MinConns = 1
-	cfg.MaxConnLifetime = time.Hour
+	pgcfg.MaxConns = cfg.Database.MaxConns
+	pgcfg.MinConns = cfg.Database.MinConns
+	pgcfg.MaxConnLifetime = time.Hour
 
-	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	pool, err := pgxpool.NewWithConfig(ctx, pgcfg)
 	if err != nil {
 		return nil, fmt.Errorf("create pgx pool: %w", err)
 	}
 
-	// Проверка соединения
+	// Checking the connection
 	if err := pool.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
 	log.Printf("INFO: connected to database")
 
-	if err := runMigrations(dsn); err != nil {
+	if err := runMigrations(dsn, cfg.Migrations.Path); err != nil {
 		return nil, err
 	}
 
@@ -61,8 +62,7 @@ func Connect(ctx context.Context) (*Database, error) {
 
 // runMigrations applies database schema changes using the goose provider
 // from the specified migrations directory.
-func runMigrations(dsn string) error {
-	migrationsPath := getEnv("MIGRATION_PATH", "./migrations")
+func runMigrations(dsn string, migrationsPath string) error {
 
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -80,13 +80,4 @@ func runMigrations(dsn string) error {
 
 	log.Printf("INFO: database migrations applied")
 	return nil
-}
-
-// getEnv retrieves the value of the environment variable named by the key
-// or returns a fallback value if the variable is empty.
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }
