@@ -54,7 +54,7 @@ func getTestConfig() *config.Config {
 	}
 
 	cfg.Database.Password = dbPass
-	
+
 	if cfg.Test.DBHost != "" {
 		cfg.Database.Host = cfg.Test.DBHost
 	} else {
