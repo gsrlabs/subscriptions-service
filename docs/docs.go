@@ -143,7 +143,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "example": "\"01-2025\"",
+                        "example": "\"01-2026\"",
                         "description": "Start period",
                         "name": "from",
                         "in": "query",
@@ -151,7 +151,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "example": "\"12-2025\"",
+                        "example": "\"12-2026\"",
                         "description": "End period",
                         "name": "to",
                         "in": "query",

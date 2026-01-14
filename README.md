@@ -3,9 +3,21 @@
 REST-сервис для агрегации и управления данными об онлайн-подписках пользователей. 
 Проект реализован в рамках тестового задания.
 
-## 🚀 Быстрый запуск
+---
 
-Для автоматической настройки и запуска выполните:
+## 🚀 Быстрый старт (онлайн-версия)
+
+Готовая версия сервиса уже развернута и доступна онлайн.
+Вы можете сразу открыть Swagger UI и протестировать API:
+
+👉 **Swagger UI:**
+https://subscription-service.gsrcloud.ru/swagger/index.html
+
+> Никакой установки не требуется — просто откройте ссылку в браузере.
+
+---
+
+## 🐳 Локальный запуск
 
 ```bash
 git clone https://github.com/gsrlabs/subscriptions-service.git
@@ -15,6 +27,7 @@ chmod +x setup.sh
 ```
 
 После запуска сервис будет доступен по адресу: http://localhost:8090
+
 Swagger: http://localhost:8090/swagger/index.html
 
 ---
@@ -28,13 +41,64 @@ Swagger: http://localhost:8090/swagger/index.html
 * **Documentation:** Swagger (swaggo)
 * **Configuration:** Viper + .env/.yaml
 * **Containerization:** Docker / Docker Compose
-* **CI/CD:** GitHub Actions (tests)
+* **CI/CD:** GitHub Actions (tests + lint)
 
 ---
 
 ## 📂 Структура проекта
 
 Проект следует принципам **Clean Architecture**:
+```
+subscription-service
+├──cmd
+│   └──app
+│   │   └──main.go
+├──config
+│   └──config.yml
+├──docs
+│   ├──docs.go
+│   ├──swagger.json
+│   └──swagger.yaml
+├──internal
+│   ├──config
+│   │   ├──config_test.go
+│   │   └──config.go
+│   ├──db
+│   │   ├──db_test.go
+│   │   └──db.go
+│   ├──handler
+│   │   ├──handler.go
+│   │   ├──middleware.go
+│   │   └──response.go
+│   ├──model
+│   │   ├──model_test.go
+│   │   ├──model.go
+│   │   ├──subscription_mapper.go
+│   │   └──validator.go
+│   ├──repository
+│   │   ├──repository_test.go
+│   │   └──repository.go
+│   └──service
+│   │   ├──service_test.go
+│   │   └──service.go
+├──migrations
+│   ├──0001_init_subscriptions.sql
+│   └──0002_add_indexes.sql
+├──tests
+│   └──handler_test.go
+├──.github
+│   └──workflows
+│   │   └──tests.yml
+├──docker-compose.yml
+├──Dockerfile
+├──go.mod
+├──go.sum
+├──Makefile
+├──README.md
+├──setup.sh
+├──.env.example
+└──.gitignore
+```
 
 * `cmd/app`: Точка входа в приложение.
 * `internal/handler`: HTTP-слой (валидация запросов, формирование ответов).
@@ -83,6 +147,7 @@ Swagger: http://localhost:8090/swagger/index.html
 
 Для управления проектом используется `Makefile`:
 
+* `make docker-logs` — посмотреть логи.
 * `make docker-up` — поднять контейнеры.
 * `make docker-down` — остановить работу контейнеров.
 * `make docker-rebuild` — пересобрать и запустить контиейнеры.
