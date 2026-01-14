@@ -26,7 +26,8 @@ test:
 # 📄 Генерация документации Swagger
 swag:
 	@echo "Generating Swagger docs..."
-	swag init -g $(MAIN_PATH) --parseDependency --instanceName swagger
+	export PATH=$(go env GOPATH)/bin:$PATH
+	swag init -g $(MAIN_PATH)
 
 # 🧹 Очистка (удаление бинарников и временных файлов)
 clean:

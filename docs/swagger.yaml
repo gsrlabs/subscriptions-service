@@ -229,13 +229,13 @@ paths:
       description: Calculate total cost of subscriptions for a period
       parameters:
       - description: Start period
-        example: '"01-2025"'
+        example: '"01-2026"'
         in: query
         name: from
         required: true
         type: string
       - description: End period
-        example: '"12-2025"'
+        example: '"12-2026"'
         in: query
         name: to
         required: true
