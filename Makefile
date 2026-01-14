@@ -1,4 +1,3 @@
-# Имя нашего бинарника
 BINARY_NAME=subscription-service
 # Путь к точке входа
 MAIN_PATH=cmd/app/main.go
@@ -35,9 +34,14 @@ clean:
 	go clean
 	rm -rf bin/
 
-# 🐳 Docker: Поднять контейнеры (с пересборкой)
+# 🐳 Docker: Поднять контейнеры
 docker-up:
 	@echo "Starting Docker containers..."
+	docker compose up -d
+
+# 🐳 Docker: Поднять контейнеры (с пересборкой)
+docker-rebuild:
+	@echo "Build and starting Docker containers..."
 	docker compose up --build -d
 
 # 🛑 Docker: Остановить контейнеры

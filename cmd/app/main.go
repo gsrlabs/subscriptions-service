@@ -41,9 +41,13 @@ func main() {
 
 	log.Printf("INFO: starting application")
 
+	// Load config
 	cfg, err := config.Load("config/config.yml")
 	if err != nil {
 		log.Fatalf("ERROR: load config: %v", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
 	}
 
 	// 1️⃣ DB

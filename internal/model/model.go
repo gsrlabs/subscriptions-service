@@ -31,10 +31,10 @@ type CreateSubscriptionRequest struct {
 // SubscriptionResponse represents the data structure returned to API clients.
 // It uses strings for dates to ensure consistent formatting across different platforms.
 type SubscriptionResponse struct {
-    ID          uuid.UUID `json:"id" extensions:"x-order=1"`
-    ServiceName string    `json:"service_name" extensions:"x-order=2"`
-    Price       int       `json:"price" extensions:"x-order=3"`
-    UserID      uuid.UUID `json:"user_id" extensions:"x-order=4"`
-    StartDate   string    `json:"start_date" extensions:"x-order=5"`
-    EndDate     *string   `json:"end_date,omitempty" extensions:"x-order=6"`
+	ID          uuid.UUID `json:"id" extensions:"x-order=1"`
+	ServiceName string    `json:"service_name" extensions:"x-order=2"`
+	Price       int       `json:"price" extensions:"x-order=3"`
+	UserID      uuid.UUID `json:"user_id" extensions:"x-order=4"`
+	StartDate   string    `json:"start_date" extensions:"x-order=5"`
+	EndDate     *string   `json:"end_date,omitempty" extensions:"x-order=6"`
 }

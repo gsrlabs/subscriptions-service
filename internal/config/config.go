@@ -2,89 +2,80 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	App        AppConfig
-	Database   DatabaseConfig
-	Migrations MigrationConfig
-	Test       TestConfig
+	App        AppConfig       `mapstructure:"app"`
+	Database   DatabaseConfig  `mapstructure:"database"`
+	Migrations MigrationConfig `mapstructure:"migrations"`
+	Test       TestConfig      `mapstructure:"test"`
 }
 
 type AppConfig struct {
-	Port string
+	Port string `mapstructure:"port"`
 }
 
 type DatabaseConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	Name     string
-	SSLMode  string
-
-	MaxConns int32
-	MinConns int32
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	Name     string `mapstructure:"name"`
+	SSLMode  string `mapstructure:"sslmode"`
+	MaxConns int32  `mapstructure:"max_conns"`
+	MinConns int32  `mapstructure:"min_conns"`
 }
 
 type MigrationConfig struct {
-	Path string
+	Path string `mapstructure:"path"`
 }
 
 type TestConfig struct {
-	DBHost                string
-	MigrationsPath        string
-	HandlerMigrationsPath string
+	DBHost                string `mapstructure:"db_host"`
+	MigrationsPath        string `mapstructure:"migrations_path"`
+	HandlerMigrationsPath string `mapstructure:"handler_migrations_path"`
 }
 
 func Load(path string) (*Config, error) {
 	v := viper.New()
 
-	// --- File ---
 	v.SetConfigFile(path)
 	v.SetConfigType("yaml")
 
-	// --- Env ---
-	v.SetEnvPrefix("")
 	v.AutomaticEnv()
+	// Allows Viper to understand the structure in ENV: DATABASE_PORT -> database.port
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
+	_ = v.BindEnv("app.port", "APP_PORT")
+	_ = v.BindEnv("database.host", "DB_HOST")
+	_ = v.BindEnv("database.port", "DB_PORT")
+	_ = v.BindEnv("database.user", "DB_USER")
+	_ = v.BindEnv("database.password", "DB_PASSWORD")
+	_ = v.BindEnv("database.name", "DB_NAME")
+	_ = v.BindEnv("database.sslmode", "DB_SSLMODE")
+
 	if err := v.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("read config: %w", err)
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	cfg := &Config{}
+	var cfg Config
 
-	cfg.App = AppConfig{
-		Port: v.GetString("app.port"),
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	cfg.Database = DatabaseConfig{
-		Host:     v.GetString("database.host"),
-		Port:     v.GetInt("database.port"),
-		User:     v.GetString("database.user"),
-		Name:     v.GetString("database.name"),
-		SSLMode:  v.GetString("database.sslmode"),
-		MaxConns: v.GetInt32("database.max_conns"),
-		MinConns: v.GetInt32("database.min_conns"),
+	return &cfg, nil
+}
+
+func (c *Config) Validate() error {
+	if c.Database.Password == "" {
+		return fmt.Errorf("DB_PASSWORD is required")
 	}
-
-	// Password is from env ONLY
-	cfg.Database.Password = os.Getenv("DB_PASSWORD")
-
-	cfg.Migrations = MigrationConfig{
-		Path: v.GetString("migrations.path"),
+	if c.Database.Host == "" {
+		return fmt.Errorf("DB_HOST is required")
 	}
-
-	cfg.Test = TestConfig{
-		DBHost:                v.GetString("test.db_host"),
-		MigrationsPath:        v.GetString("test.migrations_path"),
-		HandlerMigrationsPath: v.GetString("test.handler_migrations_path"),
-	}
-
-	return cfg, nil
+	return nil
 }
