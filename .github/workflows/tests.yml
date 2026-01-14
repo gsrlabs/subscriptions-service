@@ -6,7 +6,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    # Поднимаем PostgreSQL контейнер для тестов
     services:
       postgres:
         image: postgres:18
@@ -16,7 +15,7 @@ jobs:
           POSTGRES_DB: subscriptions
         ports:
           - 5432:5432
-        # Ждем, пока база будет готова принимать соединения
+
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -30,28 +29,20 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.25.x'
+        cache: true
 
     - name: Install dependencies
       run: go mod download
 
-# Проверка, что код хотя бы компилируется
+    - name: Run Linter
+      uses: golangci/golangci-lint-action@v9
+      with:
+        version: latest
+
+
     - name: Build
       run: go build -v -o app-binary ./cmd/app/main.go
 
-    # Раскомментируйте ниже, если понадобятся Integration/E2E тесты
-    # - name: Run local server
-    #   env:
-    #     DB_HOST: localhost
-    #     DB_PORT: 5432
-    #     DB_USER: postgres
-    #     DB_PASSWORD: password123
-    #     DB_NAME: subscriptions
-    #     MIGRATION_PATH: ./migrations # Здесь путь от корня проекта
-    #   run: |
-    #     ./app-binary & 
-    #     sleep 5 # Даем серверу время на запуск и миграции
-
-    # Запуск всех тестов в проекте
     - name: Run Tests
       env:
         DB_HOST: localhost
